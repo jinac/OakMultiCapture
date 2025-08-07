@@ -1,5 +1,6 @@
 import math
 from datetime import timedelta
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -15,12 +16,49 @@ def createPipeline(pipeline):
     camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
     # output = camRgb.requestFullResolutionOutput().createOutputQueue()
     output = camRgb.requestOutput((1280, 800), dai.ImgFrame.Type.NV12 ,dai.ImgResizeMode.CROP, 20).createOutputQueue()
+
     return pipeline, output
 
+def createVideoPipeline(pipeline):
+    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
+    # output = camRgb.requestFullResolutionOutput().createOutputQueue()
+    output = camRgb.requestOutput((1280, 800), dai.ImgFrame.Type.NV12 ,dai.ImgResizeMode.CROP, 20)
+    videoEncoder = pipeline.create(dai.node.VideoEncoder).build(output)
+    videoEncoder.setProfile(dai.VideoEncoderProperties.Profile.H264_MAIN)
+
+    record = pipeline.create(dai.node.RecordVideo)
+    record.setRecordVideoFile(Path("test.mp4"))
+    record.setRecordMetadataFile("test.mcap")
+    videoEncoder.out.link(record.input)
+
+    return pipeline, output.createOutputQueue()
+
 def createRGBDPipeline(pipeline):
-    rgbd = pipeline.create(dai.node.RGBD).build()
     # camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    # camRgb.link(rgbd.inColor)
+    # rgb_out = camRgb.requestOutput((1280, 800), dai.ImgFrame.Type.NV12 ,dai.ImgResizeMode.CROP, 20)
+
+    # left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
+    # right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
+    # left_out = left.requestOutput(size=(640, 480),
+    #             resizeMode=dai.ImgResizeMode.CROP)
+    # right_out = right.requestOutput(size=(640, 480),
+    #             resizeMode=dai.ImgResizeMode.CROP)
+    # stereo = pipeline.create(dai.node.StereoDepth)
+    # left_out.link(stereo.left)
+    # right_out.link(stereo.right)
+
+    # stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
+    # stereo.enableDistortionCorrection(True)
+    # stereo.setExtendedDisparity(True)
+    # stereo.setLeftRightCheck(True)
+    # stereo.initialConfig.setMedianFilter(dai.MedianFilter.MEDIAN_OFF)
+
+    rgbd = pipeline.create(dai.node.RGBD).build(True, dai.node.StereoDepth.PresetMode.DEFAULT)
+
+    # stereo.depth.link(rgbd.inDepth)
+    # rgb_out.link(stereo.inputAlignTo)
+    # rgb_out.link(rgbd.inColor)
+
     output = rgbd.rgbd.createOutputQueue()
     return pipeline, output
 
@@ -43,14 +81,14 @@ def initStream(stack, deviceInfo):
     if eepromData.productName != "":
         print("   >>> Product name:", eepromData.productName)
 
-    pipeline, output = createPipeline(pipeline)
-    # pipeline, output = createRGBDPipeline(pipeline)
+    # pipeline, output = createPipeline(pipeline)
+    # pipeline, output = createVideoPipeline(pipeline)
+    pipeline, output = createRGBDPipeline(pipeline)
     pipeline.start()
 
     return pipeline, output
 
 def displayFrame(msg, i):
-    # print(msg)
     assert isinstance(msg, dai.ImgFrame)
     frame = msg.getCvFrame()
     seqNum = msg.getSequenceNum()
@@ -118,13 +156,18 @@ def run():
             #     videoIn = stream.get()
             #     displayFrame(videoIn, i)
             for i, stream in enumerate(queues):
-                new_msg = stream.tryGet()
-                if new_msg is not None:
-                    msgs[i].append(new_msg)
-                    if check_sync(msgs, new_msg.getTimestamp()):
-                        for i, q in enumerate(msgs):
-                            msg = q.pop(0)
-                            displayFrame(msg, i)
+                rgbd_frame = stream.get()
+                # displayFrame(rgbd_frame.getRGBFrame(), i)
+                displayFrame(rgbd_frame.getDepthFrame(), i)
+
+            # for i, stream in enumerate(queues):
+            #     new_msg = stream.tryGet()
+            #     if new_msg is not None:
+            #         msgs[i].append(new_msg)
+            #         if check_sync(msgs, new_msg.getTimestamp()):
+            #             for i, q in enumerate(msgs):
+            #                 msg = q.pop(0)
+            #                 displayFrame(msg, i)
             if cv2.waitKey(1) == ord('q'):
                 break
 
