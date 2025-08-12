@@ -6,64 +6,13 @@ import cv2
 import numpy as np
 import depthai as dai
 import contextlib
+import oak_pipelines as oakpipe
 
 def check_devices():
     for device in dai.Device.getAllAvailableDevices():
         print(f"{device.getDeviceId()} {device.state}")
 
-
-def createPipeline(pipeline):
-    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    # output = camRgb.requestFullResolutionOutput().createOutputQueue()
-    output = camRgb.requestOutput((1280, 800), dai.ImgFrame.Type.NV12 ,dai.ImgResizeMode.CROP, 20).createOutputQueue()
-
-    return pipeline, output
-
-def createVideoPipeline(pipeline):
-    camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    # output = camRgb.requestFullResolutionOutput().createOutputQueue()
-    output = camRgb.requestOutput((1280, 800), dai.ImgFrame.Type.NV12 ,dai.ImgResizeMode.CROP, 20)
-    videoEncoder = pipeline.create(dai.node.VideoEncoder).build(output)
-    videoEncoder.setProfile(dai.VideoEncoderProperties.Profile.H264_MAIN)
-
-    record = pipeline.create(dai.node.RecordVideo)
-    record.setRecordVideoFile(Path("test.mp4"))
-    record.setRecordMetadataFile("test.mcap")
-    videoEncoder.out.link(record.input)
-
-    return pipeline, output.createOutputQueue()
-
-def createRGBDPipeline(pipeline):
-    # camRgb = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_A)
-    # rgb_out = camRgb.requestOutput((1280, 800), dai.ImgFrame.Type.NV12 ,dai.ImgResizeMode.CROP, 20)
-
-    # left = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_B)
-    # right = pipeline.create(dai.node.Camera).build(dai.CameraBoardSocket.CAM_C)
-    # left_out = left.requestOutput(size=(640, 480),
-    #             resizeMode=dai.ImgResizeMode.CROP)
-    # right_out = right.requestOutput(size=(640, 480),
-    #             resizeMode=dai.ImgResizeMode.CROP)
-    # stereo = pipeline.create(dai.node.StereoDepth)
-    # left_out.link(stereo.left)
-    # right_out.link(stereo.right)
-
-    # stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.DEFAULT)
-    # stereo.enableDistortionCorrection(True)
-    # stereo.setExtendedDisparity(True)
-    # stereo.setLeftRightCheck(True)
-    # stereo.initialConfig.setMedianFilter(dai.MedianFilter.MEDIAN_OFF)
-
-    rgbd = pipeline.create(dai.node.RGBD).build(True, dai.node.StereoDepth.PresetMode.DEFAULT)
-
-    # stereo.depth.link(rgbd.inDepth)
-    # rgb_out.link(stereo.inputAlignTo)
-    # rgb_out.link(rgbd.inColor)
-
-    output = rgbd.rgbd.createOutputQueue()
-    return pipeline, output
-
-
-def initStream(stack, deviceInfo):
+def initStream(stack, deviceInfo, dev_idx):
     pipeline = stack.enter_context(dai.Pipeline())
     device = pipeline.getDefaultDevice()
     # device = dai.Device(deviceInfo)
@@ -81,9 +30,11 @@ def initStream(stack, deviceInfo):
     if eepromData.productName != "":
         print("   >>> Product name:", eepromData.productName)
 
-    # pipeline, output = createPipeline(pipeline)
-    # pipeline, output = createVideoPipeline(pipeline)
-    pipeline, output = createRGBDPipeline(pipeline)
+    pipeline, output = oakpipe.createPipeline(
+        pipeline, 
+        cam_type=oakpipe.CamType.RGBD,
+        rec_flag=True,
+        output_prefix=str(dev_idx))
     pipeline.start()
 
     return pipeline, output
@@ -140,8 +91,8 @@ def run():
         queues = []
         pipelines = []
 
-        for deviceInfo in deviceInfos:
-            pipeline, output = initStream(stack, deviceInfo)
+        for dev_idx, deviceInfo in enumerate(deviceInfos):
+            pipeline, output = initStream(stack, deviceInfo, dev_idx)
 
             pipelines.append(pipeline)
             queues.append(output)
@@ -156,9 +107,10 @@ def run():
             #     videoIn = stream.get()
             #     displayFrame(videoIn, i)
             for i, stream in enumerate(queues):
+                # displayFrame(stream.get(), i)
                 rgbd_frame = stream.get()
-                # displayFrame(rgbd_frame.getRGBFrame(), i)
-                displayFrame(rgbd_frame.getDepthFrame(), i)
+                displayFrame(rgbd_frame.getRGBFrame(), i)
+                # displayFrame(rgbd_frame.getDepthFrame(), i)
 
             # for i, stream in enumerate(queues):
             #     new_msg = stream.tryGet()
