@@ -21,11 +21,22 @@ def main():
             webSocketPort=8765, httpPort=8080
         )
 
-        replay = pipeline.create(dai.node.ReplayMetadataOnly)
-        replay.setReplayFile("0.mcap")
+        # replay = pipeline.create(dai.node.ReplayMetadataOnly)
+        # replay.setReplayFile("0.mcap")
+        # replay.setLoop(True)
+        # output = replay.out.createOutputQueue()
+        # remoteConnector.addTopic("pcl", replay.out, "common")
+
+        prefix = "0"
+        replay = pipeline.create(dai.node.ReplayVideo)
+        replay.setReplayVideoFile(f"{prefix}.mp4")
+        replay.setReplayMetadataFile(f"{prefix}.mcap")
+        replay.setOutFrameType(dai.ImgFrame.Type.BGR888i)
+        replay.setSize(1200, 800)
+        replay.setFps(30)
         replay.setLoop(True)
         output = replay.out.createOutputQueue()
-        remoteConnector.addTopic("pcl", replay.out, "common")
+        remoteConnector.addTopic("video", replay.out, "common")
 
         pipeline.start()
 

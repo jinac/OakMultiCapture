@@ -29,10 +29,12 @@ def initStream(stack, deviceInfo, dev_idx):
         print("   >>> Board name:", eepromData.boardName)
     if eepromData.productName != "":
         print("   >>> Product name:", eepromData.productName)
+    
+    print(device.readCalibration2())
 
     pipeline, output = oakpipe.createPipeline(
         pipeline, 
-        cam_type=oakpipe.CamType.RGBD,
+        cam_type=oakpipe.CamType.RGB,
         rec_flag=True,
         output_prefix=str(dev_idx))
     pipeline.start()
@@ -107,19 +109,11 @@ def run():
             #     videoIn = stream.get()
             #     displayFrame(videoIn, i)
             for i, stream in enumerate(queues):
-                # displayFrame(stream.get(), i)
-                rgbd_frame = stream.get()
-                displayFrame(rgbd_frame.getRGBFrame(), i)
+                displayFrame(stream.get(), i)
+                # rgbd_frame = stream.get()
+                # displayFrame(rgbd_frame.getRGBFrame(), i)
                 # displayFrame(rgbd_frame.getDepthFrame(), i)
 
-            # for i, stream in enumerate(queues):
-            #     new_msg = stream.tryGet()
-            #     if new_msg is not None:
-            #         msgs[i].append(new_msg)
-            #         if check_sync(msgs, new_msg.getTimestamp()):
-            #             for i, q in enumerate(msgs):
-            #                 msg = q.pop(0)
-            #                 displayFrame(msg, i)
             if cv2.waitKey(1) == ord('q'):
                 break
 
