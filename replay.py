@@ -27,7 +27,7 @@ def main():
         # output = replay.out.createOutputQueue()
         # remoteConnector.addTopic("pcl", replay.out, "common")
 
-        prefix = "0"
+        prefix = "1"
         replay = pipeline.create(dai.node.ReplayVideo)
         replay.setReplayVideoFile(f"{prefix}.mp4")
         replay.setReplayMetadataFile(f"{prefix}.mcap")

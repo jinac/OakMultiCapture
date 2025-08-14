@@ -30,7 +30,14 @@ def initStream(stack, deviceInfo, dev_idx):
     if eepromData.productName != "":
         print("   >>> Product name:", eepromData.productName)
     
-    print(device.readCalibration2())
+    calibData = device.readCalibration2()
+    intrinsics = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.CAM_A))
+    intrinsics.tofile(f"{dev_idx}_intrinsics.npy")
+
+    dist = np.array(calibData.getDistortionCoefficients(dai.CameraBoardSocket.CAM_A))
+    dist.tofile(f"{dev_idx}_dist.npy")
+    
+
 
     pipeline, output = oakpipe.createPipeline(
         pipeline, 
