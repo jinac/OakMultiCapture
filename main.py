@@ -42,7 +42,7 @@ def initStream(stack, deviceInfo, dev_idx):
     pipeline, output = oakpipe.createPipeline(
         pipeline, 
         cam_type=oakpipe.CamType.RGBD,
-        rec_flag=True,
+        rec_flag=False,
         output_prefix=str(dev_idx))
     pipeline.start()
 
