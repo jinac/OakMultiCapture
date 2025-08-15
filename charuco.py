@@ -16,10 +16,6 @@ SAVE_NAME = 'ChArUco_Marker.png'
 def get_charucoboard():
     d = cv2.aruco.getPredefinedDictionary(ARUCO_DICT)
     board = cv2.aruco.CharucoBoard((SQUARES_VERTICALLY, SQUARES_HORIZONTALLY), SQUARE_LENGTH, MARKER_LENGTH, d)
-    # size_ratio = SQUARES_HORIZONTALLY / SQUARES_VERTICALLY
-    # # charucoParams = cv2.aruco.CharucoParameters()
-    # # detectorParams = cv2.aruco.DetectorParameters()
-    # # detector = cv2.aruco.CharucoDetector(board, charucoParams, detectorParams)
     return board
 
 def main():
