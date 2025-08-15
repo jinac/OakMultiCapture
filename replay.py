@@ -6,12 +6,16 @@ import cv2
 
 import utils
 
-def init_replay(stack, remote, record_data, idx):
+def init_replay(stack, remote, record_dir, idx):
     pipeline = stack.enter_context(dai.Pipeline())
 
     replay = pipeline.create(dai.node.ReplayMetadataOnly)
+    record_data = utils.RecordData(record_dir)
     replay.setReplayFile(record_data.pcl)
     replay.setLoop(True)
+
+    # pipeline, replay, record_data = utils.create_replay_pipeline(pipeline, record_dir)
+
     remote.addTopic(f"pcl{idx}", replay.out, "common")
 
     return pipeline
@@ -28,7 +32,7 @@ def main():
         )
 
         for idx, record_dir in enumerate(record_dirs):
-            pipeline = init_replay(stack, remoteConnector, utils.RecordData(record_dir), idx)
+            pipeline = init_replay(stack, remoteConnector, record_dir, idx)
             pipelines.append(pipeline)
             pipeline.start()
 

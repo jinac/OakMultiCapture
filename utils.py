@@ -63,11 +63,11 @@ class RecordData():
 
         return record_dir
 
-def createPipeline(pipeline: dai.Pipeline,
-                   record_dir_path: Union[Path | str],
-                   record_pcl_flag: bool = True,
-                   record_holistic_flag: bool = True) -> Tuple[dai.Pipeline, dai.node, RecordData]:
 
+def create_record_pipeline(pipeline: dai.Pipeline,
+                           record_dir_path: Union[Path | str],
+                           record_pcl_flag: bool = True,
+                           record_holistic_flag: bool = True) -> Tuple[dai.Pipeline, dai.node, RecordData]:
     device = pipeline.getDefaultDevice()
 
     print("===Connected to ", device.getDeviceId())
@@ -108,5 +108,16 @@ def createPipeline(pipeline: dai.Pipeline,
         config = dai.RecordConfig()
         config.outputDir = str(record_data.dir)
         pipeline.enableHolisticRecord(config)
+
+    return(pipeline, output, record_data)
+
+def create_replay_pipeline(pipeline: dai.Pipeline,
+                           record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
+    record_data = RecordData(record_dir_path)
+
+    pipeline.enableHolisticReplay(str(record_data.holistic_record))
+    mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
+    rgbd = pipeline.create(dai.node.RGBD).build(True, mode)
+    output = rgbd.pcl
 
     return(pipeline, output, record_data)

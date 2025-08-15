@@ -19,7 +19,7 @@ def check_devices():
 
 def init_stream(stack, out_dir):
     pipeline = stack.enter_context(dai.Pipeline())
-    out = utils.createPipeline(pipeline, str(out_dir))
+    out = utils.create_record_pipeline(pipeline, str(out_dir))
     pipeline, output, record_data = out
 
     pipeline.start()
