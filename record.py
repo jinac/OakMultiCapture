@@ -7,6 +7,8 @@ import numpy as np
 import depthai as dai
 import contextlib
 import oak_pipelines as oakpipe
+from camParams import CamData
+
 
 def check_devices():
     for device in dai.Device.getAllAvailableDevices():
@@ -29,19 +31,22 @@ def initStream(stack, deviceInfo, dev_idx):
         print("   >>> Board name:", eepromData.boardName)
     if eepromData.productName != "":
         print("   >>> Product name:", eepromData.productName)
-    
-    calibData = device.readCalibration2()
-    intrinsics = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.CAM_A))
-    intrinsics.tofile(f"{dev_idx}_intrinsics.npy")
 
+    calibData = device.readCalibration2()
+
+    prefix = str(dev_idx)
+    intrinsics = np.array(calibData.getCameraIntrinsics(dai.CameraBoardSocket.CAM_A)).reshape(3, 3)
     dist = np.array(calibData.getDistortionCoefficients(dai.CameraBoardSocket.CAM_A))
-    dist.tofile(f"{dev_idx}_dist.npy")
+    cam_data = CamData()
+    cam_data.intrinsics = intrinsics
+    cam_data.distortion = dist
+    cam_data.save(param_fp = prefix + "/calib.npz")
 
     pipeline, output = oakpipe.createPipeline(
         pipeline, 
-        cam_type=oakpipe.CamType.RGB,
+        cam_type=oakpipe.CamType.RGBD,
         rec_flag=True,
-        output_prefix=str(dev_idx))
+        output_prefix=prefix)
     pipeline.start()
 
     return pipeline, output
@@ -68,7 +73,6 @@ def displayJoinedFrames(queues):
         if msg is not None:
             frames.append(msg.getCvFrame())
             timestamps.append(msg.getTimestamp().total_seconds())
-    print(timestamps)
     if len(frames) > 0:
         cv2.imshow(f"video_streams", np.hstack(frames))
 
@@ -104,20 +108,11 @@ def run():
             pipelines.append(pipeline)
             queues.append(output)
 
-        print(pipelines)
-        print(queues)
+        # print(pipelines)
+        # print(queues)
 
         msgs = [[] for _ in queues]
         while True:
-            # displayJoinedFrames(queues)
-            # for i, stream in enumerate(queues):
-            #     videoIn = stream.get()
-            #     displayFrame(videoIn, i)
-            for i, stream in enumerate(queues):
-                displayFrame(stream.get(), i)
-                # rgbd_frame = stream.get()
-                # displayFrame(rgbd_frame.getRGBFrame(), i)
-                # displayFrame(rgbd_frame.getDepthFrame(), i)
 
             if cv2.waitKey(1) == ord('q'):
                 break

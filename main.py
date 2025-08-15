@@ -41,7 +41,7 @@ def initStream(stack, deviceInfo, dev_idx):
 
     pipeline, output = oakpipe.createPipeline(
         pipeline, 
-        cam_type=oakpipe.CamType.RGB,
+        cam_type=oakpipe.CamType.RGBD,
         rec_flag=True,
         output_prefix=str(dev_idx))
     pipeline.start()
@@ -49,6 +49,7 @@ def initStream(stack, deviceInfo, dev_idx):
     return pipeline, output
 
 def displayFrame(msg, i):
+    # print(msg)
     assert isinstance(msg, dai.ImgFrame)
     frame = msg.getCvFrame()
     seqNum = msg.getSequenceNum()
@@ -111,15 +112,16 @@ def run():
 
         msgs = [[] for _ in queues]
         while True:
-            # displayJoinedFrames(queues)
+            # # displayJoinedFrames(queues)
+            # # for i, stream in enumerate(queues):
+            # #     videoIn = stream.get()
+            # #     displayFrame(videoIn, i)
             # for i, stream in enumerate(queues):
-            #     videoIn = stream.get()
-            #     displayFrame(videoIn, i)
-            for i, stream in enumerate(queues):
-                displayFrame(stream.get(), i)
-                # rgbd_frame = stream.get()
-                # displayFrame(rgbd_frame.getRGBFrame(), i)
-                # displayFrame(rgbd_frame.getDepthFrame(), i)
+            #     # displayFrame(stream.get(), i)
+            #     rgbd_frame = stream.get()
+            #     # print(rgbd_frame)
+            #     displayFrame(rgbd_frame.getRGBFrame(), i)
+            #     # displayFrame(rgbd_frame.getDepthFrame(), i)
 
             if cv2.waitKey(1) == ord('q'):
                 break

@@ -7,17 +7,8 @@ import depthai as dai
 
 import oak_pipelines as oakpipe
 import charuco as chboard
+from camParams import CamData
 
-
-class CamData():
-    def __init__(self):
-        self.intrinsics = np.eye(4)
-        self.distortion = np.zeros((1,5))
-        self.extrinsics = np.eye(4)
-
-    def load(self, file_prefix):
-        self.intrinsics = np.fromfile(file_prefix + "_intrinsics.npy").reshape(3, 3)
-        self.distortion = np.fromfile(file_prefix + "_dist.npy")
 
 def estimate_frame_pose(cam, frame, cboard):
     detector = cv2.aruco.CharucoDetector(cboard)
@@ -29,9 +20,11 @@ def estimate_frame_pose(cam, frame, cboard):
     ret, rvec, tvec = cv2.solvePnP(obj_pts, img_pts,
                                    cam.intrinsics, cam.distortion)
 
-    # rotM = cv2.Rodrigues(rot_vec)[0]
-    # world_to_cam = np.vstack((np.hstack((rotM, trans_vec)), np.array([0,0,0,1])))
-    # cam_to_world = np.linalg.inv(world_to_cam)
+    rotM = cv2.Rodrigues(rvec)[0]
+    cam.world_to_cam = np.vstack((np.hstack((rotM, tvec)), np.array([0,0,0,1])))
+    cam.cam_to_world = np.linalg.inv(cam.world_to_cam)
+    cam.rvec = rvec
+    cam.tvec = tvec
 
     return(rvec, tvec, c_corners, c_ids)
 
@@ -86,7 +79,8 @@ def main():
 
     for idx, pre in enumerate(prefix):
         c = CamData()
-        c.load(pre)
+        param_fp = pre + "_calib.npz"
+        c.load(param_fp)
 
         cams.append(c)
 
@@ -95,9 +89,12 @@ def main():
 
     for c, pre in zip(cams, prefix):
         r, t = calibrate(c, checkerboard, pre+".mp4", visualize)
+        r = r.mean(axis=0)
+        t = t.mean(axis=0)
+        c.save(param_fp)
         # print(r[0], t[0])
-        print(r.mean(axis=0))
-        print(t.mean(axis=0))
+        # print(r.mean(axis=0))
+        # print(t.mean(axis=0))
 
 
 if __name__ == "__main__":
