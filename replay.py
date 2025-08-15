@@ -1,51 +1,42 @@
+import contextlib
+from pathlib import Path
+
 import depthai as dai
 import cv2
 
-def displayFrame(msg):
-    assert isinstance(msg, dai.ImgFrame)
-    frame = msg.getCvFrame()
-    seqNum = msg.getSequenceNum()
-    timestamp = msg.getTimestamp()
-    frame = cv2.putText(
-        frame,
-        str(timestamp.total_seconds()),
-        (50,50),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0, 255, 0))
-    cv2.imshow("video_device", frame)
+import utils
+
+def init_replay(stack, remote, record_data, idx):
+    pipeline = stack.enter_context(dai.Pipeline())
+
+    replay = pipeline.create(dai.node.ReplayMetadataOnly)
+    replay.setReplayFile(record_data.pcl)
+    replay.setLoop(True)
+    remote.addTopic(f"pcl{idx}", replay.out, "common")
+
+    return pipeline
+
 
 def main():
-    with dai.Pipeline() as pipeline:
+    with contextlib.ExitStack() as stack:
+        data_dir = Path("calibration_20250815_1428")
+        record_dirs = [_ for _ in data_dir.glob("*")]
+        pipelines = []
+
         remoteConnector = dai.RemoteConnection(
-            webSocketPort=8765, httpPort=8080
+            webSocketPort=8765, httpPort=8081
         )
 
-        # replay = pipeline.create(dai.node.ReplayMetadataOnly)
-        # replay.setReplayFile("0.mcap")
-        # replay.setLoop(True)
-        # output = replay.out.createOutputQueue()
-        # remoteConnector.addTopic("pcl", replay.out, "common")
+        for idx, record_dir in enumerate(record_dirs):
+            pipeline = init_replay(stack, remoteConnector, utils.RecordData(record_dir), idx)
+            pipelines.append(pipeline)
+            pipeline.start()
 
-        prefix = "1"
-        replay = pipeline.create(dai.node.ReplayVideo)
-        replay.setReplayVideoFile(f"{prefix}.mp4")
-        replay.setReplayMetadataFile(f"{prefix}.mcap")
-        replay.setOutFrameType(dai.ImgFrame.Type.BGR888i)
-        replay.setSize(1200, 800)
-        replay.setFps(30)
-        replay.setLoop(True)
-        output = replay.out.createOutputQueue()
-        remoteConnector.addTopic("video", replay.out, "common")
-
-        pipeline.start()
-
-        while pipeline.isRunning:
-            key = remoteConnector.waitKey(1)
-            # pcl = output.get()
-            # print(pcl)
+        while True:
             if cv2.waitKey(1) == ord('q'):
                 break
+    for pipeline in pipelines:
+        pipeline.stop()
 
 if __name__ == "__main__":
     main()
