@@ -53,12 +53,11 @@ class RecordData():
         self.cam_params = CamParams(self.dir / "calib.npz")
         self.holistic_record = self.dir / "recording.tar"
         self.pcl = self.dir / "pcl.mcap"
-        self.videos = self.get_recordings()
+        self.video_dir = self.get_recordings()
 
     def get_recordings(self):
-        record_dir = None
-        if not self.dir.exists() and self.holistic_record.exists():
-            record_dir = self.dir / "recordings"
+        record_dir = self.dir / "recordings"
+        if not record_dir.exists() and self.holistic_record.exists():
             with tarfile.open(self.holistic_record) as f:
                 f.extractall(record_dir)
 

@@ -5,31 +5,40 @@ import cv2
 import numpy as np
 import depthai as dai
 
-import oak_pipelines as oakpipe
+import utils
 import charuco as chboard
-from camParams import CamData
 
 
 def estimate_frame_pose(cam, frame, cboard):
     detector = cv2.aruco.CharucoDetector(cboard)
     c_corners, c_ids, m_corners, m_ids = detector.detectBoard(frame)
+    if c_corners is None:
+        return None
 
     obj_pts, img_pts = cboard.matchImagePoints(c_corners, c_ids)
 
-    # print(cam.intrinsics.shape, cam.distortion.shape)
-    ret, rvec, tvec = cv2.solvePnP(obj_pts, img_pts,
-                                   cam.intrinsics, cam.distortion)
+    _, rvec, tvec = cv2.solvePnP(obj_pts, img_pts,
+                                 cam.intrinsics, cam.distortion)
 
+    return(rvec, tvec, c_corners, c_ids)
+
+def update_cam(cam, rvec, tvec):
     rotM = cv2.Rodrigues(rvec)[0]
     cam.world_to_cam = np.vstack((np.hstack((rotM, tvec)), np.array([0,0,0,1])))
     cam.cam_to_world = np.linalg.inv(cam.world_to_cam)
     cam.rvec = rvec
     cam.tvec = tvec
 
-    return(rvec, tvec, c_corners, c_ids)
+    cam.save()
 
-def calibrate(cam, checkerboard, mp4_fp, visualize=False):
-    mp4_fp = Path(mp4_fp)
+def calibrate(record_data, checkerboard, visualize=False):
+    cam = record_data.cam_params
+
+    video_dir = record_data.video_dir
+    mp4_fp = video_dir / "CameraCAM_A.mp4"
+    if not video_dir.exists():
+        raise Exception("No RGB Camera file found")
+
     frames = []
     cap = cv2.VideoCapture(str(mp4_fp))
 
@@ -45,8 +54,6 @@ def calibrate(cam, checkerboard, mp4_fp, visualize=False):
         ret = estimate_frame_pose(cam, frame, checkerboard)
         if ret is not None:
             r, t, corners, marker_ids = ret
-            # corners = np.squeeze(corners)
-            # print(corners.shape, marker_ids.shape)
             rot.append(r)
             trans.append(t)
             rgb_frame = cv2.aruco.drawDetectedCornersCharuco(
@@ -58,43 +65,29 @@ def calibrate(cam, checkerboard, mp4_fp, visualize=False):
             cv2.imshow("test", rgb_frame)
             cv2.waitKey(100)
 
-        # frames.append(frame)
-
     cap.release()
 
-    # print(len(frames))
-    # rot, trans = estimate_extrinsics(cam, frames, checkerboard)
     return(np.array(rot), np.array(trans))
-    # return(None, None)
 
 
 def main():
     visualize = True
-    prefix = [
-        "calibration_20250813/0",
-        "calibration_20250813/1"
-    ]
+    data_dir = Path("calibration_20250815_1428")
+    device_dirs = [_ for _ in data_dir.glob("*")]
 
-    cams = []
-
-    for idx, pre in enumerate(prefix):
-        c = CamData()
-        param_fp = pre + "_calib.npz"
-        c.load(param_fp)
-
-        cams.append(c)
-
-    # checkerboard = load_checkerboard()
     checkerboard = chboard.get_charucoboard()
 
-    for c, pre in zip(cams, prefix):
-        r, t = calibrate(c, checkerboard, pre+".mp4", visualize)
+    print(device_dirs)
+    for d in device_dirs:
+        record_data = utils.RecordData(d)
+
+        r, t = calibrate(record_data, checkerboard, visualize)
+
         r = r.mean(axis=0)
         t = t.mean(axis=0)
-        c.save(param_fp)
-        # print(r[0], t[0])
-        # print(r.mean(axis=0))
-        # print(t.mean(axis=0))
+        cam_params = record_data.cam_params
+        update_cam(cam_params, r, t)
+        print(r, t)
 
 
 if __name__ == "__main__":
