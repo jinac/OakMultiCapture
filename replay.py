@@ -7,11 +7,20 @@ import cv2
 import utils
 
 def init_replay(stack, remote, record_dir, idx):
-    pipeline = stack.enter_context(dai.Pipeline())
+    pipeline = stack.enter_context(dai.Pipeline(False))
 
-    replay = pipeline.create(dai.node.ReplayMetadataOnly)
+    # replay = pipeline.create(dai.node.ReplayMetadataOnly)
+    # record_data = utils.RecordData(record_dir)
+    # replay.setReplayFile(record_data.pcl)
+    # replay.setLoop(True)
+
+    replay = pipeline.create(dai.node.ReplayVideo)
     record_data = utils.RecordData(record_dir)
-    replay.setReplayFile(record_data.pcl)
+    replay.setReplayVideoFile(record_data.video_dir / "CameraCAM_A.mp4")
+    replay.setReplayMetadataFile(record_data.video_dir / "CameraCAM_A.mcap")
+    replay.setOutFrameType(dai.ImgFrame.Type.BGR888i)
+    replay.setSize(600, 480)
+    replay.setFps(30)
     replay.setLoop(True)
 
     # pipeline, replay, record_data = utils.create_replay_pipeline(pipeline, record_dir)

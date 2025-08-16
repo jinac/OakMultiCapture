@@ -53,6 +53,7 @@ class RecordData():
         self.cam_params = CamParams(self.dir / "calib.npz")
         self.holistic_record = self.dir / "recording.tar"
         self.pcl = self.dir / "pcl.mcap"
+        # self.rgbd_video = self.dir / "rgbd.mp4"
         self.video_dir = self.get_recordings()
 
     def get_recordings(self):
