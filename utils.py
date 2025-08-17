@@ -111,7 +111,8 @@ class HostRGBDQueueSync():
 def create_record_pipeline(pipeline: dai.Pipeline,
                            record_dir_path: Union[Path | str],
                            record_pcl_flag: bool = True,
-                           record_holistic_flag: bool = True) -> Tuple[dai.Pipeline, dai.node, RecordData]:
+                           record_holistic_flag: bool = True,
+                           visualize: bool = False) -> Tuple[dai.Pipeline, dai.node, RecordData]:
     device = pipeline.getDefaultDevice()
 
     print("===Connected to ", device.getDeviceId())
@@ -143,6 +144,8 @@ def create_record_pipeline(pipeline: dai.Pipeline,
     size = (640, 480)
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
     # output = rgbd.rgbd.createOutputQueue()
+    if visualize:
+        view = pipeline.create(nodes.RGBDDisplay).build(rgbd.inColor.getParent().out)
 
     if record_pcl_flag:
         record = pipeline.create(dai.node.RecordMetadataOnly)

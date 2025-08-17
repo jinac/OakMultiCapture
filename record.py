@@ -17,12 +17,10 @@ def check_devices():
     for device in dai.Device.getAllAvailableDevices():
         print(f"{device.getDeviceId()} {device.state}")
 
-def init_stream(stack, out_dir):
+def init_stream(stack, out_dir, vis):
     pipeline = stack.enter_context(dai.Pipeline())
-    out = utils.create_record_pipeline(pipeline, str(out_dir), False)
-    # pipeline, output, record_data = out
+    out = utils.create_record_pipeline(pipeline, str(out_dir), True, True, vis)
 
-    pipeline.start()
     return(out)
 
 def displayFrame(msg, i):
@@ -48,32 +46,21 @@ def run():
     with contextlib.ExitStack() as stack:
         deviceInfos = dai.Device.getAllAvailableDevices()
         print("=== Found devices: ", deviceInfos)
-        # rgbd_sync = utils.HostRGBDQueueSync()
-        # queues = []
         pipelines = []
         cam_data = []
 
         for idx in range(len(deviceInfos)):
-            pipeline, record_data = init_stream(stack, out_dir / str(idx))
+            vis = idx == 0
+            pipeline, record_data = init_stream(stack, out_dir / str(idx), vis)
 
-            # rgbd_sync.add_queue(output)
             cam_data.append(record_data)
             pipelines.append(pipeline)
 
-        # print(pipelines)
-        # print(queues)
+        for p in pipelines[1:]:
+            p.start()
 
-        # msgs = [[] for _ in queues]
-        # while True:
-        #     # msgs = rgbd_sync.tryGetSample()
-        #     print(msgs)
-        #     for idx, data in enumerate(msgs):
-        #         rgb_frame = data.getRGBFrame()
-        #         # d_frame = data.getDepthFrame()
-        #         displayFrame(rgb_frame, f"{idx}_0")
-        #         # displayFrame(d_frame, f"{idx}_1")
         while True:
-            if cv2.waitKey(1) == ord('q'):
+            if cv2.waitKey(100) == ord('q'):
                 break
 
 def main():
