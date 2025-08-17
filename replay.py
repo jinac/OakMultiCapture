@@ -1,3 +1,4 @@
+import argparse
 import contextlib
 from pathlib import Path
 
@@ -31,8 +32,12 @@ def init_replay(stack, remote, record_dir, idx):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Replay Recorded Oak Data")
+    parser.add_argument("dir", help="Directory containing RecordData (i.e. calibration_20250816_2041)")
+    args = parser.parse_args()
+
     with contextlib.ExitStack() as stack:
-        data_dir = Path("calibration_20250815_1428")
+        data_dir = Path(args.dir)
         record_dirs = [_ for _ in data_dir.glob("*")]
         pipelines = []
 
