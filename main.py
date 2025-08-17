@@ -7,6 +7,7 @@ import numpy as np
 import depthai as dai
 import contextlib
 import utils
+import nodes
 
 def check_devices():
     for device in dai.Device.getAllAvailableDevices():
@@ -17,8 +18,8 @@ def init_stream(stack):
     out = utils.create_watch_pipeline(pipeline)
     pipeline, output = out
 
-    # pipeline.start()
-    return(out)
+    pipeline.start()
+    return(pipeline, output)
 
 def displayFrame(msg, i):
     assert isinstance(msg, dai.ImgFrame)
@@ -59,27 +60,51 @@ def run():
         print("=== Found devices: ", deviceInfos)
         queues = []
         pipelines = []
+        rgbd_sync = utils.HostRGBDQueueSync()
 
         for idx in range(len(deviceInfos)):
             pipeline, output = init_stream(stack)
 
+            rgbd_sync.add_queue(output)
+
             pipelines.append(pipeline)
             queues.append(output)
 
-        # print(pipelines)
-        # print(queues)
+        with dai.Pipeline(False) as p:
+            # display = p.create(nodes.MultiRGBDDisplay).build(queues[0], queues[1])
+            # for pipeline in pipelines:
+            #     pipeline.start()
 
-        # msgs = [[] for _ in queues]
-        pipeline.run()
-        while True:
-            for i, stream in enumerate(queues):
-                rgbd_frame = stream.get()
+            print(pipelines)
+            print(queues)
+
+            msgs = [[] for _ in queues]
+            while True:
+                msgs = rgbd_sync.tryGetSample()
+                for idx, data in enumerate(msgs):
+                    rgb_frame = data.getRGBFrame()
+                    d_frame = data.getDepthFrame()
+                    displayFrame(rgb_frame, f"{idx}_0")
+                    displayFrame(d_frame, f"{idx}_1")
+                # for i, stream in enumerate(queues):
+                #     new_msg = stream.tryGet()
+                #     if new_msg is not None:
+                #         msgs[i].append(new_msg)
+                #         if check_sync(msgs, new_msg.getTimestamp()):
+                #             for idx, msg in enumerate(msgs):
+                #                 data = msg.pop(0)
+                #                 rgb_frame = data.getRGBFrame()
+                #                 d_frame = data.getDepthFrame()
+                #                 displayFrame(rgb_frame, idx)
+                #                 displayFrame(d_frame, idx*2)
+
+                # rgbd_frame = stream.get()
                 # print(type(rgbd_frame))
                 # displayFrame(rgbd_frame.getRGBFrame(), i)
                 # displayFrame(rgbd_frame.getDepthFrame(), i)
 
-            if cv2.waitKey(1) == ord('q'):
-                break
+                if cv2.waitKey(1) == ord('q'):
+                    break
 
 def main():
     print("Hello from luxtest!")

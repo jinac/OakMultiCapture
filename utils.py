@@ -1,4 +1,6 @@
 import uuid
+import math
+from datetime import timedelta
 from enum import Enum
 from typing import Tuple, Union
 from pathlib import Path
@@ -66,6 +68,46 @@ class RecordData():
         return record_dir
 
 
+class HostRGBDQueueSync():
+    def __init__(self, threshold=math.ceil(500 / 30)):
+        self.threshold = threshold
+        self.message_buffers = []
+        self.queues = []
+
+    def add_queue(self, queue):
+        self.queues.append(queue)
+        self.message_buffers.append([])
+
+    def check_sync(self, timestamp):
+        matching_frames = []
+        for q in self.message_buffers:
+            for i, msg in enumerate(q):
+                time_diff = abs(msg.getTimestamp() - timestamp)
+                # So below 17ms @ 30 FPS => frames are in sync
+                if time_diff <= timedelta(milliseconds=self.threshold):
+                    matching_frames.append(i)
+                    break
+
+        if len(matching_frames) == len(self.queues):
+            # We have all frames synced. Remove the excess ones
+            for i, q in enumerate(self.message_buffers):
+                q = q[matching_frames[i]:]
+            return True
+        else:
+            return False
+
+    def tryGetSample(self):
+        out = []
+        for i, q in enumerate(self.queues):
+            new_msg = q.tryGet()
+            if new_msg is not None:
+                self.message_buffers[i].append(new_msg)
+                if self.check_sync(new_msg.getTimestamp()):
+                    for buffer in self.message_buffers:
+                        out.append(buffer.pop(0))
+        return out
+
+
 def create_record_pipeline(pipeline: dai.Pipeline,
                            record_dir_path: Union[Path | str],
                            record_pcl_flag: bool = True,
@@ -123,12 +165,12 @@ def create_watch_pipeline(pipeline: dai.Pipeline,
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode)
     output = rgbd.rgbd.createOutputQueue()
     # print(type(rgbd.rgbd), type(rgbd.pcl))
-    print(rgbd.inColor.getParent().out.__dir__())
-    print(rgbd.inColor.getParent().out)
+    # print(rgbd.inColor.getParent().out.__dir__())
+    # print(rgbd.inColor.getParent().out)
 
-    display = pipeline.create(nodes.RGBDDisplay).build(rgbd.inColor.getParent().out)
+    # display = pipeline.create(nodes.RGBDDisplay).build(rgbd.inColor.getParent().out)
 
-
+    # output = rgbd.inColor.getParent().out
     return(pipeline, output)
 
 def create_replay_pipeline(pipeline: dai.Pipeline,
