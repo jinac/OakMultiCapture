@@ -23,30 +23,30 @@ class RGBDDisplay(dai.node.HostNode):
             print("Detected 'q' - stopping the pipeline...")
             self.stopPipeline()
 
-class MultiRGBDDisplay(dai.node.HostNode):
-    def build(self, rgbd_out1, rgbd_out2):
-        self.link_args(rgbd_out1, rgbd_out2)
+# class MultiRGBDDisplay(dai.node.HostNode):
+#     def build(self, rgbd_out1, rgbd_out2):
+#         self.link_args(rgbd_out1, rgbd_out2)
 
-        self.sendProcessingToPipeline(True)
+#         self.sendProcessingToPipeline(True)
 
-        return self
+#         return self
     
-    def process(self, rgbd1, rgbd2):
-        print(rgbd1)
-        print(rgbd1["inColorSync"])
-        rgb_frame = rgbd1["inColorSync"].getCvFrame()
-        d_frame = rgbd1["inDepthSync"].getCvFrame()
+#     def process(self, rgbd1, rgbd2):
+#         print(rgbd1)
+#         print(rgbd1["inColorSync"])
+#         rgb_frame = rgbd1["inColorSync"].getCvFrame()
+#         d_frame = rgbd1["inDepthSync"].getCvFrame()
 
-        rgb_frame2 = rgbd2["inColorSync"].getCvFrame()
-        d_frame2 = rgbd2["inDepthSync"].getCvFrame()
+#         rgb_frame2 = rgbd2["inColorSync"].getCvFrame()
+#         d_frame2 = rgbd2["inDepthSync"].getCvFrame()
 
-        cv2.imshow("HostDisplayRGB", rgb_frame)
-        cv2.imshow("HostDisplayDepth", d_frame)
+#         cv2.imshow("HostDisplayRGB", rgb_frame)
+#         cv2.imshow("HostDisplayDepth", d_frame)
 
-        cv2.imshow("HostDisplayRGB2", rgb_frame2)
-        cv2.imshow("HostDisplayDepth2", d_frame2)
+#         cv2.imshow("HostDisplayRGB2", rgb_frame2)
+#         cv2.imshow("HostDisplayDepth2", d_frame2)
 
-        key = cv2.waitKey(1)
-        if key == ord('q'):
-            print("Detected 'q' - stopping the pipeline...")
-            self.stopPipeline()
+#         key = cv2.waitKey(1)
+#         if key == ord('q'):
+#             print("Detected 'q' - stopping the pipeline...")
+#             self.stopPipeline()
