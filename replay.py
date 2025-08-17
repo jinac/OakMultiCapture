@@ -10,11 +10,14 @@ import utils
 def init_replay(stack, remote, record_dir, idx):
     pipeline = stack.enter_context(dai.Pipeline(False))
 
-    # replay = pipeline.create(dai.node.ReplayMetadataOnly)
-    # record_data = utils.RecordData(record_dir)
-    # replay.setReplayFile(record_data.pcl)
-    # replay.setLoop(True)
+    # Send color rgb to visualizer
+    replay = pipeline.create(dai.node.ReplayMetadataOnly)
+    record_data = utils.RecordData(record_dir)
+    replay.setReplayFile(record_data.pcl)
+    replay.setLoop(True)
+    remote.addTopic(f"pcl{idx}", replay.out, "common")
 
+    # Send pointcloud to visualizer
     replay = pipeline.create(dai.node.ReplayVideo)
     record_data = utils.RecordData(record_dir)
     replay.setReplayVideoFile(record_data.video_dir / "CameraCAM_A.mp4")
@@ -23,10 +26,7 @@ def init_replay(stack, remote, record_dir, idx):
     replay.setSize(600, 480)
     replay.setFps(30)
     replay.setLoop(True)
-
-    # pipeline, replay, record_data = utils.create_replay_pipeline(pipeline, record_dir)
-
-    remote.addTopic(f"pcl{idx}", replay.out, "common")
+    remote.addTopic(f"video{idx}", replay.out, "common")
 
     return pipeline
 

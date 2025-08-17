@@ -168,13 +168,17 @@ def create_watch_pipeline(pipeline: dai.Pipeline) -> Tuple[dai.Pipeline, dai.nod
 
     return(pipeline, output)
 
-def create_replay_pipeline(pipeline: dai.Pipeline,
-                           record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
-    record_data = RecordData(record_dir_path)
+# def create_replay_pipeline(pipeline: dai.Pipeline,
+#                            record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
+#     record_data = RecordData(record_dir_path)
 
-    pipeline.enableHolisticReplay(str(record_data.holistic_record))
-    mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
-    rgbd = pipeline.create(dai.node.RGBD).build(True, mode)
-    output = rgbd.pcl
+#     pipeline.enableHolisticReplay(str(record_data.holistic_record))
+#     print(record_data.holistic_record)
 
-    return(pipeline, output, record_data)
+#     mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
+#     size = (640, 480)
+#     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
+#     # output = rgbd.pcl
+#     output = None
+
+#     return(pipeline, output, record_data)
