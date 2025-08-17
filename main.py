@@ -35,25 +35,6 @@ def displayFrame(msg, i):
         (0, 255, 0))
     cv2.imshow(f"video_device{i}", frame)
 
-def check_sync(queues, timestamp):
-    matching_frames = []
-    for q in queues:
-        for i, msg in enumerate(q):
-            time_diff = abs(msg.getTimestamp() - timestamp)
-            # So below 17ms @ 30 FPS => frames are in sync
-            if time_diff <= timedelta(milliseconds=math.ceil(500 / 30)):
-                matching_frames.append(i)
-                break
-
-    if len(matching_frames) == len(queues):
-        # We have all frames synced. Remove the excess ones
-        for i, q in enumerate(queues):
-            q = q[matching_frames[i]:]
-        return True
-    else:
-        return False
-
-
 def run():
     with contextlib.ExitStack() as stack:
         deviceInfos = dai.Device.getAllAvailableDevices()
@@ -66,45 +47,20 @@ def run():
             pipeline, output = init_stream(stack)
 
             rgbd_sync.add_queue(output)
-
             pipelines.append(pipeline)
             queues.append(output)
 
-        with dai.Pipeline(False) as p:
-            # display = p.create(nodes.MultiRGBDDisplay).build(queues[0], queues[1])
-            # for pipeline in pipelines:
-            #     pipeline.start()
 
-            print(pipelines)
-            print(queues)
+        while True:
+            msgs = rgbd_sync.tryGetSample()
+            for idx, data in enumerate(msgs):
+                rgb_frame = data.getRGBFrame()
+                d_frame = data.getDepthFrame()
+                displayFrame(rgb_frame, f"{idx}_0")
+                displayFrame(d_frame, f"{idx}_1")
 
-            msgs = [[] for _ in queues]
-            while True:
-                msgs = rgbd_sync.tryGetSample()
-                for idx, data in enumerate(msgs):
-                    rgb_frame = data.getRGBFrame()
-                    d_frame = data.getDepthFrame()
-                    displayFrame(rgb_frame, f"{idx}_0")
-                    displayFrame(d_frame, f"{idx}_1")
-                # for i, stream in enumerate(queues):
-                #     new_msg = stream.tryGet()
-                #     if new_msg is not None:
-                #         msgs[i].append(new_msg)
-                #         if check_sync(msgs, new_msg.getTimestamp()):
-                #             for idx, msg in enumerate(msgs):
-                #                 data = msg.pop(0)
-                #                 rgb_frame = data.getRGBFrame()
-                #                 d_frame = data.getDepthFrame()
-                #                 displayFrame(rgb_frame, idx)
-                #                 displayFrame(d_frame, idx*2)
-
-                # rgbd_frame = stream.get()
-                # print(type(rgbd_frame))
-                # displayFrame(rgbd_frame.getRGBFrame(), i)
-                # displayFrame(rgbd_frame.getDepthFrame(), i)
-
-                if cv2.waitKey(1) == ord('q'):
-                    break
+            if cv2.waitKey(1) == ord('q'):
+                break
 
 def main():
     print("Hello from luxtest!")

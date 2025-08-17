@@ -142,7 +142,7 @@ def create_record_pipeline(pipeline: dai.Pipeline,
     mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
     size = (640, 480)
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
-    output = rgbd.rgbd.createOutputQueue()
+    # output = rgbd.rgbd.createOutputQueue()
 
     if record_pcl_flag:
         record = pipeline.create(dai.node.RecordMetadataOnly)
@@ -154,23 +154,15 @@ def create_record_pipeline(pipeline: dai.Pipeline,
         config.outputDir = str(record_data.dir)
         pipeline.enableHolisticRecord(config)
 
-    return(pipeline, output, record_data)
+    return(pipeline, record_data)
 
-def create_watch_pipeline(pipeline: dai.Pipeline,
-                           record_pcl_flag: bool = True,
-                           record_holistic_flag: bool = True) -> Tuple[dai.Pipeline, dai.node]:
+def create_watch_pipeline(pipeline: dai.Pipeline) -> Tuple[dai.Pipeline, dai.node]:
     device = pipeline.getDefaultDevice()
 
     mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode)
     output = rgbd.rgbd.createOutputQueue()
-    # print(type(rgbd.rgbd), type(rgbd.pcl))
-    # print(rgbd.inColor.getParent().out.__dir__())
-    # print(rgbd.inColor.getParent().out)
 
-    # display = pipeline.create(nodes.RGBDDisplay).build(rgbd.inColor.getParent().out)
-
-    # output = rgbd.inColor.getParent().out
     return(pipeline, output)
 
 def create_replay_pipeline(pipeline: dai.Pipeline,
