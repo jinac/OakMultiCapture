@@ -9,9 +9,6 @@ import contextlib
 
 import utils
 
-import oak_pipelines as oakpipe
-from camParams import CamData
-
 
 def check_devices():
     for device in dai.Device.getAllAvailableDevices():
@@ -56,7 +53,7 @@ def run():
             cam_data.append(record_data)
             pipelines.append(pipeline)
 
-        for p in pipelines[1:]:
+        for p in pipelines:
             p.start()
 
         while True:
