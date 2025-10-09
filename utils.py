@@ -162,11 +162,29 @@ def create_record_pipeline(pipeline: dai.Pipeline,
 def create_watch_pipeline(pipeline: dai.Pipeline) -> Tuple[dai.Pipeline, dai.node]:
     device = pipeline.getDefaultDevice()
 
-    mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
-    rgbd = pipeline.create(dai.node.RGBD).build(True, mode)
-    output = rgbd.rgbd.createOutputQueue()
+    print("=== Connected to ", device.getDeviceId())
+    mxId = device.getDeviceId()
+    cameras = device.getConnectedCameras()
+    usbSpeed = device.getUsbSpeed()
+    eepromData = device.readCalibration2().getEepromData()
 
-    return(pipeline, output)
+    print("   >>> Device ID:", mxId)
+    print("   >>> Num of cameras:", len(cameras))
+    print("   >>> USB Speed:", usbSpeed)
+    if eepromData.boardName != "":
+        print("   >>> Board name:", eepromData.boardName)
+    if eepromData.productName != "":
+        print("   >>> Product name:", eepromData.productName)
+    
+    mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
+    size = (640, 480)
+    rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
+    print(rgbd.inColor.getParent().out)
+    pipeline.create(nodes.SocketForwarder).build(rgbd.inColor.getParent().out)
+    # output = rgbd.rgbd.createOutputQueue()
+
+    # return(pipeline, output)
+    return pipeline
 
 # def create_replay_pipeline(pipeline: dai.Pipeline,
 #                            record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
