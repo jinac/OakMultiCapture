@@ -15,7 +15,7 @@ def check_devices():
 
 def init_stream(stack):
     pipeline = stack.enter_context(dai.Pipeline())
-    out = utils.create_watch_pipeline(pipeline)
+    out = utils.create_watch_pipeline(pipeline, False)
     pipeline, output = out
 
     pipeline.start()

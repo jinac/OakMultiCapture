@@ -159,7 +159,8 @@ def create_record_pipeline(pipeline: dai.Pipeline,
 
     return(pipeline, record_data)
 
-def create_watch_pipeline(pipeline: dai.Pipeline) -> Tuple[dai.Pipeline, dai.node]:
+def create_watch_pipeline(pipeline: dai.Pipeline,
+                          sockForward: bool) -> Tuple[dai.Pipeline, dai.node]:
     device = pipeline.getDefaultDevice()
 
     print("=== Connected to ", device.getDeviceId())
@@ -179,12 +180,13 @@ def create_watch_pipeline(pipeline: dai.Pipeline) -> Tuple[dai.Pipeline, dai.nod
     mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
     size = (640, 480)
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
-    print(rgbd.inColor.getParent().out)
-    pipeline.create(nodes.SocketForwarder).build(rgbd.inColor.getParent().out)
-    # output = rgbd.rgbd.createOutputQueue()
+    if sockForward:
+        print(rgbd.inColor.getParent().out)
+        pipeline.create(nodes.SocketForwarder).build(rgbd.inColor.getParent().out)
+    output = rgbd.rgbd.createOutputQueue()
 
-    # return(pipeline, output)
-    return pipeline
+    return(pipeline, output)
+    # return pipeline
 
 # def create_replay_pipeline(pipeline: dai.Pipeline,
 #                            record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
