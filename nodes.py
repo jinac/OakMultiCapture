@@ -45,9 +45,9 @@ class SocketForwarder(dai.node.HostNode):
         print("SocketForwarder started")
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('127.0.0.1', 8485))
+        self.sock.connect(('127.0.0.1', 8080))
         self.conn = self.sock.makefile('wb')
-
+        
     def onStop(self) -> None:
         self.sock.close()
 
