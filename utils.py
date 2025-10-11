@@ -182,7 +182,8 @@ def create_watch_pipeline(pipeline: dai.Pipeline,
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
     if sockForward:
         print(rgbd.inColor.getParent().out)
-        pipeline.create(nodes.SocketForwarder).build(rgbd.inColor.getParent().out)
+        # pipeline.create(nodes.SocketForwarder).build(rgbd.inColor.getParent().out)
+        pipeline.create(nodes.ZMQPub).build(rgbd.inColor.getParent().out)
     output = rgbd.rgbd.createOutputQueue()
 
     return(pipeline, output)
