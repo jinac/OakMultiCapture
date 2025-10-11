@@ -9,6 +9,8 @@ from time import sleep
 import zmq
 import base64
 
+import msgpack
+
 class RGBDDisplay(dai.node.HostNode):
     def build(self, rgbd_out):
         self.link_args(rgbd_out)
@@ -88,7 +90,7 @@ class ZMQPub(dai.node.HostNode):
         return self
     
     def onStart(self) -> None:
-        print("SocketForwarder started")
+        print("ZMQPub started")
 
         self.sock = self.context.socket(zmq.PUB)
         self.sock.connect(self.addr)
@@ -103,9 +105,17 @@ class ZMQPub(dai.node.HostNode):
         # d_frame = rgbd["inDepthSync"].getCvFrame()
 
         cv2.imshow("HostDisplayRGB", rgb_frame)
-        _, data = cv2.imencode('.jpg', rgb_frame)
-        data = pickle.dumps(data, 0)
+        # _, data = cv2.imencode('.jpg', rgb_frame)
+        # data = pickle.dumps(data, 0)
         # sz = len(data)
+
+        image_data = rgb_frame.tobytes()
+        image_metadata = {
+            "shape": rgb_frame.shape,
+            'dtype': str(rgb_frame.dtype),
+            'data': image_data
+        }
+        data = msgpack.packb(image_metadata, use_bin_type=True)
 
         self.sock.send(data)
 
