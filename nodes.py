@@ -9,7 +9,7 @@ from time import sleep
 import zmq
 import base64
 
-import msgpack
+import matrix_pb2
 
 class RGBDDisplay(dai.node.HostNode):
     def build(self, rgbd_out):
@@ -50,7 +50,7 @@ class SocketForwarder(dai.node.HostNode):
         print("SocketForwarder started")
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('127.0.0.1', 8080))
+        self.sock.connect(('127.0.0.1', 8081))
         self.conn = self.sock.makefile('wb')
 
     def onStop(self) -> None:
@@ -81,7 +81,7 @@ class ZMQPub(dai.node.HostNode):
         self.sock = None
         # ip = '127.0.0.1'
         ip = "localhost"
-        port = "8080"
+        port = "8081"
         self.addr = "tcp://{}:{}".format(ip, port)
         # self.encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
@@ -102,22 +102,31 @@ class ZMQPub(dai.node.HostNode):
     def process(self, rgbd):
         # print(rgbd["inColorSync"])
         rgb_frame = rgbd["inColorSync"].getCvFrame()
-        # d_frame = rgbd["inDepthSync"].getCvFrame()
+        d_frame = rgbd["inDepthSync"].getCvFrame()
 
         cv2.imshow("HostDisplayRGB", rgb_frame)
         # _, data = cv2.imencode('.jpg', rgb_frame)
         # data = pickle.dumps(data, 0)
         # sz = len(data)
 
-        image_data = rgb_frame.tobytes()
-        image_metadata = {
-            "shape": rgb_frame.shape,
-            'dtype': str(rgb_frame.dtype),
-            'data': image_data
-        }
-        data = msgpack.packb(image_metadata, use_bin_type=True)
-
-        self.sock.send(data)
+        mat_pb = matrix_pb2.MatProto()
+        mat_pb.rows, mat_pb.cols, _ = rgb_frame.shape
+        mat_pb.dtype = 2
+        mat_pb.data = rgb_frame.tobytes()
+        mat_pb.depth_data = d_frame.tobytes()
+        self.sock.send(mat_pb.SerializeToString())
+    
+        # image_data = rgb_frame.tobytes()
+        # h, w, c = rgb_frame.shape
+        # image_metadata = {
+        #     "h": h,
+        #     "w": w,
+        #     "c": c,
+        #     "dtype": str(rgb_frame.dtype),
+        #     "data": image_data
+        # }
+        # data = msgpack.packb(image_metadata, use_bin_type=True)
+        # self.sock.send(data)
 
         key = cv2.waitKey(10)
         if key == ord('q'):
