@@ -11,6 +11,8 @@ import numpy as np
 
 import nodes
 
+MODE_PRESET = dai.node.StereoDepth.PresetMode.DEFAULT
+
 class CamType(Enum):
     NONE = 0
     RGB = 1
@@ -177,7 +179,7 @@ def create_watch_pipeline(pipeline: dai.Pipeline,
     if eepromData.productName != "":
         print("   >>> Product name:", eepromData.productName)
     
-    mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
+    mode = MODE_PRESET
     size = (640, 480)
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
     if sockForward:
@@ -189,17 +191,28 @@ def create_watch_pipeline(pipeline: dai.Pipeline,
     return(pipeline, output)
     # return pipeline
 
-# def create_replay_pipeline(pipeline: dai.Pipeline,
-#                            record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
-#     record_data = RecordData(record_dir_path)
+def create_watch3D_pipeline(pipeline: dai.Pipeline,
+                            record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
+    device = pipeline.getDefaultDevice()
 
-#     pipeline.enableHolisticReplay(str(record_data.holistic_record))
-#     print(record_data.holistic_record)
+    print("=== Connected to ", device.getDeviceId())
+    mxId = device.getDeviceId()
+    cameras = device.getConnectedCameras()
+    usbSpeed = device.getUsbSpeed()
+    eepromData = device.readCalibration2().getEepromData()
 
-#     mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
-#     size = (640, 480)
-#     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
-#     # output = rgbd.pcl
-#     output = None
+    print("   >>> Device ID:", mxId)
+    print("   >>> Num of cameras:", len(cameras))
+    print("   >>> USB Speed:", usbSpeed)
+    if eepromData.boardName != "":
+        print("   >>> Board name:", eepromData.boardName)
+    if eepromData.productName != "":
+        print("   >>> Product name:", eepromData.productName)
+    
+    mode = MODE_PRESET
+    size = (640, 480)
+    rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
+    output = rgbd.pcl
 
-#     return(pipeline, output, record_data)
+    return(pipeline, output)
+
