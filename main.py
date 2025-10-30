@@ -13,12 +13,13 @@ def check_devices():
     for device in dai.Device.getAllAvailableDevices():
         print(f"{device.getDeviceId()} {device.state}")
 
-def init_stream(stack):
+def init_stream(stack, remote_connector):
     pipeline = stack.enter_context(dai.Pipeline())
-    out = utils.create_watch_pipeline(pipeline, False)
+    out = utils.create_watch3D_pipeline(pipeline, False)
     pipeline, output = out
 
-    pipeline.start()
+    remote_connector.addTopic("pcl", output, "commoon")
+    # pipeline.start()
     return(pipeline, output)
 
 def displayFrame(msg, i):
@@ -39,25 +40,31 @@ def run():
     with contextlib.ExitStack() as stack:
         deviceInfos = dai.Device.getAllAvailableDevices()
         print("=== Found devices: ", deviceInfos)
-        queues = []
+        # queues = []
         pipelines = []
-        rgbd_sync = utils.HostRGBDQueueSync()
+        # rgbd_sync = utils.HostRGBDQueueSync()
+
+        remoteConnector = dai.RemoteConnection(
+            webSocketPort=8765, httpPort=8081
+        )
 
         for idx in range(len(deviceInfos)):
-            pipeline, output = init_stream(stack)
+            pipeline, output = init_stream(stack, remoteConnector)
 
-            rgbd_sync.add_queue(output)
+            # rgbd_sync.add_queue(output)
             pipelines.append(pipeline)
-            queues.append(output)
+            # queues.append(output)
 
+        for pipeline in pipelines:
+            pipeline.start()
 
         while True:
-            msgs = rgbd_sync.tryGetSample()
-            for idx, data in enumerate(msgs):
-                rgb_frame = data.getRGBFrame()
-                d_frame = data.getDepthFrame()
-                displayFrame(rgb_frame, f"{idx}_0")
-                displayFrame(d_frame, f"{idx}_1")
+            # msgs = rgbd_sync.tryGetSample()
+            # for idx, data in enumerate(msgs):
+            #     rgb_frame = data.getRGBFrame()
+            #     d_frame = data.getDepthFrame()
+            #     displayFrame(rgb_frame, f"{idx}_0")
+            #     displayFrame(d_frame, f"{idx}_1")
 
             if cv2.waitKey(1) == ord('q'):
                 break
