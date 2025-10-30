@@ -1,14 +1,10 @@
 import depthai as dai
 import cv2
+import numpy as np
 
-import socket
-import struct
-import pickle
 from time import sleep
 
 import zmq
-import base64
-
 import matrix_pb2
 
 class RGBDDisplay(dai.node.HostNode):
@@ -34,56 +30,15 @@ class RGBDDisplay(dai.node.HostNode):
             self.stopPipeline()
 
 
-class SocketForwarder(dai.node.HostNode):
-    def build(self, rgbd_out):
-        self.link_args(rgbd_out)
-
-        self.sock = None
-        self.conn = None
-        self.encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
-
-        self.sendProcessingToPipeline(True)
-
-        return self
-    
-    def onStart(self) -> None:
-        print("SocketForwarder started")
-
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect(('127.0.0.1', 8081))
-        self.conn = self.sock.makefile('wb')
-
-    def onStop(self) -> None:
-        self.sock.close()
-
-    def process(self, rgbd):
-        # print(rgbd["inColorSync"])
-        rgb_frame = rgbd["inColorSync"].getCvFrame()
-        # d_frame = rgbd["inDepthSync"].getCvFrame()
-
-        # cv2.imshow("HostDisplayRGB", rgb_frame)
-        _, data = cv2.imencode('.jpg', rgb_frame, self.encode_param)
-        data = pickle.dumps(data, 0)
-        sz = len(data)
-        self.sock.sendall(struct.pack(">L", sz) + data)
-        # cv2.imshow("HostDisplayDepth", d_frame)
-
-        # key = cv2.waitKey(10)
-        # if key == ord('q'):
-        #     print("Detected 'q' - stopping the pipeline...")
-        #     self.stopPipeline()
-
 class ZMQPub(dai.node.HostNode):
     def build(self, rgbd_out):
         self.link_args(rgbd_out)
 
         self.context = zmq.Context()
         self.sock = None
-        # ip = '127.0.0.1'
         ip = "localhost"
         port = "8081"
         self.addr = "tcp://{}:{}".format(ip, port)
-        # self.encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 90]
 
         self.sendProcessingToPipeline(True)
 
@@ -105,9 +60,6 @@ class ZMQPub(dai.node.HostNode):
         d_frame = rgbd["inDepthSync"].getCvFrame()
 
         cv2.imshow("HostDisplayRGB", rgb_frame)
-        # _, data = cv2.imencode('.jpg', rgb_frame)
-        # data = pickle.dumps(data, 0)
-        # sz = len(data)
 
         mat_pb = matrix_pb2.MatProto()
         mat_pb.rows, mat_pb.cols, _ = rgb_frame.shape
@@ -115,23 +67,47 @@ class ZMQPub(dai.node.HostNode):
         mat_pb.data = rgb_frame.tobytes()
         mat_pb.depth_data = d_frame.tobytes()
         self.sock.send(mat_pb.SerializeToString())
-    
-        # image_data = rgb_frame.tobytes()
-        # h, w, c = rgb_frame.shape
-        # image_metadata = {
-        #     "h": h,
-        #     "w": w,
-        #     "c": c,
-        #     "dtype": str(rgb_frame.dtype),
-        #     "data": image_data
-        # }
-        # data = msgpack.packb(image_metadata, use_bin_type=True)
-        # self.sock.send(data)
 
         key = cv2.waitKey(10)
         if key == ord('q'):
             print("Detected 'q' - stopping the pipeline...")
             self.stopPipeline()
+
+
+class Cam2WorldNode(dai.node.ThreadedHostNode):
+    def __init__(self):
+        dai.node.ThreadedHostNode.__init__(self)
+        self.inputPCL = self.createInput()
+        self.outputPCL = self.createOutput()
+        self.tsfm = np.eye(4)
+        # self.tsfm = np.array([
+        #     [1, 0, 0, 0],
+        #     [0, 1, 0, 0],
+        #     [0, 0, 1, 0],
+        #     [0, 0, 0, 1],
+        # ])
+
+    def setTsfm(self, tsfm):
+        if tsfm is None:
+            self.tsfm = np.eye(4)
+
+    def run(self):
+        while self.isRunning():
+            try:
+                inPointCloud = self.inputPCL.get()
+            except dai.MessageQueue.QueueException:
+                return # Pipeline closed
+            if inPointCloud is not None:
+                outPointCloud = dai.PointCloudData()
+                points, colors = inPointCloud.getPointsRGB()
+                ones = np.ones((points.shape[0], 1))
+                points = np.concatenate((points, ones), axis=1)
+
+                updatedPoints = points.dot(self.tsfm)[:, :3]
+
+                outPointCloud.setPointsRGB(updatedPoints, colors)
+                self.outputPCL.send(outPointCloud)
+
 
 # class MultiRGBDDisplay(dai.node.HostNode):
 #     def build(self, rgbd_out1, rgbd_out2):

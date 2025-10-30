@@ -192,7 +192,7 @@ def create_watch_pipeline(pipeline: dai.Pipeline,
     # return pipeline
 
 def create_watch3D_pipeline(pipeline: dai.Pipeline,
-                            record_dir_path: Union[Path | str]) -> Tuple[dai.Pipeline, dai.node, RecordData]:
+                            tsfm: np.array) -> Tuple[dai.Pipeline, dai.node]:
     device = pipeline.getDefaultDevice()
 
     print("=== Connected to ", device.getDeviceId())
@@ -212,7 +212,13 @@ def create_watch3D_pipeline(pipeline: dai.Pipeline,
     mode = MODE_PRESET
     size = (640, 480)
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
-    output = rgbd.pcl
+
+    tsfm_node = pipeline.create(nodes.Cam2WorldNode)
+    tsfm_node.setTsfm(np.eye(4))
+    # tsfm_node = nodes.Cam2WorldNode(np.eye(4))
+    rgbd.pcl.link(tsfm_node.inputPCL)
+
+    output = tsfm_node.outputPCL
 
     return(pipeline, output)
 

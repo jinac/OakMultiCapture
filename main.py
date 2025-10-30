@@ -57,6 +57,7 @@ def run():
 
         for pipeline in pipelines:
             pipeline.start()
+            remoteConnector.registerPipeline(pipeline)
 
         while True:
             # msgs = rgbd_sync.tryGetSample()
