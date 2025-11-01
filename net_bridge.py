@@ -52,18 +52,21 @@ def run():
             # queues.append(output)
 
         for p in pipelines:
-            p.run()
+            p.start()
 
+
+        import time
         while True:
-            # msgs = rgbd_sync.tryGetSample()
-            # for idx, data in enumerate(msgs):
-                # rgb_frame = data.getRGBFrame()
-                # d_frame = data.getDepthFrame()
-                # displayFrame(rgb_frame, f"{idx}_0")
-                # displayFrame(d_frame, f"{idx}_1")
-            # print("bla")
-            if cv2.waitKey(100) == ord('q'):
-                break
+            time.sleep(1)
+        #     # msgs = rgbd_sync.tryGetSample()
+        #     # for idx, data in enumerate(msgs):
+        #         # rgb_frame = data.getRGBFrame()
+        #         # d_frame = data.getDepthFrame()
+        #         # displayFrame(rgb_frame, f"{idx}_0")
+        #         # displayFrame(d_frame, f"{idx}_1")
+        #     # print("bla")
+        #     if cv2.waitKey(100) == ord('q'):
+        #         break
 
 def main():
     check_devices()

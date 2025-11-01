@@ -74,6 +74,62 @@ class ZMQPub(dai.node.HostNode):
             self.stopPipeline()
 
 
+class ZMQThreadedPub(dai.node.ThreadedHostNode):
+    def __init__(self):
+        dai.node.ThreadedHostNode.__init__(self)
+        self.inputRGBD = self.createInput()
+        # self.outputP = self.createOutput()
+        # self.tsfm = np.eye(4)
+        self.context = None
+        self.sock = None
+        self.addr = None
+
+        # self.context = zmq.Context()
+        # self.sock = None
+        # ip = "localhost"
+        # port = "8081"
+        # self.addr = "tcp://{}:{}".format(ip, port)
+
+        # self.sock = self.context.socket(zmq.PUB)
+        # self.sock.connect(self.addr)
+
+    def onStart(self) -> None:
+        print("ZMQPub started")
+
+        self.context = zmq.Context()
+        self.sock = None
+        ip = "localhost"
+        port = "8081"
+        self.addr = "tcp://{}:{}".format(ip, port)
+
+        self.sock = self.context.socket(zmq.PUB)
+        self.sock.connect(self.addr)
+
+    def onStop(self) -> None:
+        self.sock.close()
+        self.context.term()
+
+    def run(self):
+        while self.isRunning():
+            try:
+                rgbd = self.inputRGBD.tryGet()
+            except dai.MessageQueue.QueueException:
+                return # Pipeline closed
+            if rgbd is not None:
+                rgb_frame = rgbd.getRGBFrame().getCvFrame()
+                d_frame = rgbd.getDepthFrame().getCvFrame()
+                print(rgb_frame.shape, d_frame.shape)
+
+                # cv2.imshow("HostDisplayRGB", rgb_frame)
+
+                mat_pb = matrix_pb2.MatProto()
+                mat_pb.rows, mat_pb.cols, _ = rgb_frame.shape
+                mat_pb.dtype = 2
+                mat_pb.data = rgb_frame.tobytes()
+                mat_pb.depth_data = d_frame.tobytes()
+                self.sock.send(mat_pb.SerializeToString())
+
+
 class Cam2WorldNode(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
@@ -107,6 +163,8 @@ class Cam2WorldNode(dai.node.ThreadedHostNode):
 
                 outPointCloud.setPointsRGB(updatedPoints, colors)
                 self.outputPCL.send(outPointCloud)
+
+        self.stop()
 
 
 # class MultiRGBDDisplay(dai.node.HostNode):
