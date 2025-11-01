@@ -30,68 +30,58 @@ class RGBDDisplay(dai.node.HostNode):
             self.stopPipeline()
 
 
-class ZMQPub(dai.node.HostNode):
-    def build(self, rgbd_out):
-        self.link_args(rgbd_out)
+# class ZMQPub(dai.node.HostNode):
+#     def build(self, rgbd_out):
+#         self.link_args(rgbd_out)
 
-        self.context = zmq.Context()
-        self.sock = None
-        ip = "localhost"
-        port = "8081"
-        self.addr = "tcp://{}:{}".format(ip, port)
+#         self.context = zmq.Context()
+#         self.sock = None
+#         ip = "localhost"
+#         port = "8081"
+#         self.addr = "tcp://{}:{}".format(ip, port)
 
-        self.sendProcessingToPipeline(True)
+#         self.sendProcessingToPipeline(True)
 
-        return self
+#         return self
     
-    def onStart(self) -> None:
-        print("ZMQPub started")
+#     def onStart(self) -> None:
+#         print("ZMQPub started")
 
-        self.sock = self.context.socket(zmq.PUB)
-        self.sock.connect(self.addr)
+#         self.sock = self.context.socket(zmq.PUB)
+#         self.sock.connect(self.addr)
 
-    def onStop(self) -> None:
-        self.sock.close()
-        self.context.term()
+#     def onStop(self) -> None:
+#         self.sock.close()
+#         self.context.term()
 
-    def process(self, rgbd):
-        # print(rgbd["inColorSync"])
-        rgb_frame = rgbd["inColorSync"].getCvFrame()
-        d_frame = rgbd["inDepthSync"].getCvFrame()
+#     def process(self, rgbd):
+#         # print(rgbd["inColorSync"])
+#         rgb_frame = rgbd["inColorSync"].getCvFrame()
+#         d_frame = rgbd["inDepthSync"].getCvFrame()
 
-        cv2.imshow("HostDisplayRGB", rgb_frame)
+#         cv2.imshow("HostDisplayRGB", rgb_frame)
 
-        mat_pb = matrix_pb2.MatProto()
-        mat_pb.rows, mat_pb.cols, _ = rgb_frame.shape
-        mat_pb.dtype = 2
-        mat_pb.data = rgb_frame.tobytes()
-        mat_pb.depth_data = d_frame.tobytes()
-        self.sock.send(mat_pb.SerializeToString())
+#         mat_pb = matrix_pb2.MatProto()
+#         mat_pb.rows, mat_pb.cols, _ = rgb_frame.shape
+#         mat_pb.dtype = 2
+#         mat_pb.data = rgb_frame.tobytes()
+#         mat_pb.depth_data = d_frame.tobytes()
+#         self.sock.send(mat_pb.SerializeToString())
 
-        key = cv2.waitKey(10)
-        if key == ord('q'):
-            print("Detected 'q' - stopping the pipeline...")
-            self.stopPipeline()
+#         key = cv2.waitKey(10)
+#         if key == ord('q'):
+#             print("Detected 'q' - stopping the pipeline...")
+#             self.stopPipeline()
 
 
 class ZMQThreadedPub(dai.node.ThreadedHostNode):
     def __init__(self):
         dai.node.ThreadedHostNode.__init__(self)
         self.inputRGBD = self.createInput()
-        # self.outputP = self.createOutput()
-        # self.tsfm = np.eye(4)
+
         self.context = None
         self.sock = None
         self.addr = None
-
-        # self.context = zmq.Context()
-        # self.sock = None
-        # ip = "localhost"
-        # port = "8081"
-        # self.addr = "tcp://{}:{}".format(ip, port)
-
-        # self.sock = self.context.socket(zmq.PUB)
-        # self.sock.connect(self.addr)
 
     def onStart(self) -> None:
         print("ZMQPub started")
