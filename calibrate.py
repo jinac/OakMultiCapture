@@ -1,5 +1,6 @@
 import contextlib
 from pathlib import Path
+import argparse
 
 import cv2
 import numpy as np
@@ -74,9 +75,18 @@ def calibrate(record_data, checkerboard, visualize=False):
 
 
 def main():
-    visualize = True
-    data_dir = Path("calibration_20251102_0138")
-    device_dirs = [_ for _ in data_dir.glob("*")]
+    # Command line arguments
+    parser = argparse.ArgumentParser(description='Calibration script')
+    parser.add_argument('--visualize', action='store_true', default=True,
+                       help='Enable visualization')
+    parser.add_argument('--data_dir', type=Path, default='calibration_20250815_1428',
+                       help='Base directory for calibration data')
+    args = parser.parse_args()
+
+    visualize = args.visualize
+    data_dir = args.data_dir
+    device_dirs = [d for d in data_dir.glob("*")]
+
 
     checkerboard = chboard.get_charucoboard()
 
