@@ -9,7 +9,10 @@ import utils
 import charuco as chboard
 
 
-def estimate_frame_pose(cam, frame, cboard):
+def get_checkerboard():
+    return chboard.get_charucoboard()
+
+def estimate_frame_pose(intrinsics, distortion, frame, cboard):
     detector = cv2.aruco.CharucoDetector(cboard)
     c_corners, c_ids, m_corners, m_ids = detector.detectBoard(frame)
     if c_corners is None:
@@ -18,7 +21,7 @@ def estimate_frame_pose(cam, frame, cboard):
     obj_pts, img_pts = cboard.matchImagePoints(c_corners, c_ids)
 
     _, rvec, tvec = cv2.solvePnP(obj_pts, img_pts,
-                                 cam.intrinsics, cam.distortion)
+                                 intrinsics, distortion)
 
     return(rvec, tvec, c_corners, c_ids)
 
@@ -51,7 +54,7 @@ def calibrate(record_data, checkerboard, visualize=False):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
         
-        ret = estimate_frame_pose(cam, frame, checkerboard)
+        ret = estimate_frame_pose(cam.intrinsics, cam.distortion, frame, checkerboard)
         if ret is not None:
             r, t, corners, marker_ids = ret
             rot.append(r)
@@ -72,7 +75,7 @@ def calibrate(record_data, checkerboard, visualize=False):
 
 def main():
     visualize = True
-    data_dir = Path("calibration_20250815_1428")
+    data_dir = Path("calibration_20251102_0138")
     device_dirs = [_ for _ in data_dir.glob("*")]
 
     checkerboard = chboard.get_charucoboard()

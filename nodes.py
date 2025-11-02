@@ -6,6 +6,7 @@ from time import sleep
 
 import zmq
 import matrix_pb2
+import calibrate
 
 class RGBDDisplay(dai.node.HostNode):
     def build(self, rgbd_out):
@@ -16,7 +17,7 @@ class RGBDDisplay(dai.node.HostNode):
         return self
     
     def process(self, rgbd):
-        print(rgbd)
+        # print(rgbd)
         # print(rgbd["inColorSync"])
         rgb_frame = rgbd["inColorSync"].getCvFrame()
         # d_frame = rgbd["inDepthSync"].getCvFrame()
@@ -108,7 +109,7 @@ class ZMQThreadedPub(dai.node.ThreadedHostNode):
             if rgbd is not None:
                 rgb_frame = rgbd.getRGBFrame().getCvFrame()
                 d_frame = rgbd.getDepthFrame().getCvFrame()
-                print(rgb_frame.shape, d_frame.shape)
+                # print(rgb_frame.shape, d_frame.shape)
 
                 # cv2.imshow("HostDisplayRGB", rgb_frame)
 
@@ -154,8 +155,42 @@ class Cam2WorldNode(dai.node.ThreadedHostNode):
                 outPointCloud.setPointsRGB(updatedPoints, colors)
                 self.outputPCL.send(outPointCloud)
 
-        self.stop()
 
+class CalibrateExtrinsicsNode(dai.node.ThreadedHostNode):
+    def __init__(self):
+        dai.node.ThreadedHostNode.__init__(self)
+        self.inputRGB = self.createInput()
+
+        self.chboard = calibrate.get_checkerboard()
+        self.intrinsics = None
+        self.distortion = None
+
+        self.rotation = None
+        self.translation = None
+
+    def setCamParams(self, intrinsics, distortion):
+        self.intrinsics = intrinsics
+        self.distortion = distortion
+
+    def run(self):
+        while self.isRunning():
+            try:
+                rgbFrame = self.inputRGB.get()
+            except dai.MessageQueue.QueueException:
+                return
+            if rgbFrame is not None:
+                frame = cv2.cvtColor(rgbFrame, cv2.COLOR_BGR2GRAY)
+                ret = calibrate.estimate_frame_pose(self.intrinsics, self.distortion, frame, self.checkerboard)
+                if ret is not None:
+                    r, t, corners, marker_ids = ret
+                    self.rotation = r
+                    self.translation = t
+                    # rgb_frame = cv2.aruco.drawDetectedCornersCharuco(
+                    #     rgb_frame, corners, marker_ids, (255, 0, 0))
+                    # rgb_frame = cv2.drawFrameAxes(
+                    #     rgb_frame, cam.intrinsics, cam.distortion,
+                    #     r, t, 0.05)
+            
 
 # class MultiRGBDDisplay(dai.node.HostNode):
 #     def build(self, rgbd_out1, rgbd_out2):

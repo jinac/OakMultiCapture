@@ -60,6 +60,7 @@ class RecordData():
         self.pcl = self.dir / "pcl.mcap"
         # self.rgbd_video = self.dir / "rgbd.mp4"
         self.video_dir = self.get_recordings()
+        # self.record_dir = self.dir / "recordings"
 
     def get_recordings(self):
         record_dir = self.dir / "recordings"
@@ -114,8 +115,12 @@ def create_record_pipeline(pipeline: dai.Pipeline,
                            record_dir_path: Union[Path | str],
                            record_pcl_flag: bool = True,
                            record_holistic_flag: bool = True,
-                           visualize: bool = False) -> Tuple[dai.Pipeline, dai.node, RecordData]:
+                           visualize: bool = False) -> Tuple[dai.Pipeline,
+                                                             RecordData,
+                                                             dai.node]:
     device = pipeline.getDefaultDevice()
+
+    print(record_pcl_flag, record_holistic_flag, visualize)
 
     print("===Connected to ", device.getDeviceId())
     mxId = device.getDeviceId()
@@ -142,7 +147,7 @@ def create_record_pipeline(pipeline: dai.Pipeline,
     record_data.cam_params.distortion = dist
     record_data.cam_params.save()
 
-    mode = dai.node.StereoDepth.PresetMode.FAST_ACCURACY
+    mode = MODE_PRESET
     size = (640, 480)
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
     # output = rgbd.rgbd.createOutputQueue()
@@ -156,10 +161,14 @@ def create_record_pipeline(pipeline: dai.Pipeline,
 
     if record_holistic_flag:
         config = dai.RecordConfig()
+        # print(record_data.dir)
         config.outputDir = str(record_data.dir)
+        config.videoEncoding.enabled = True
+        config.videoEncoding.bitrate = 0 # Automatic
+        config.videoEncoding.profile = dai.VideoEncoderProperties.Profile.H264_MAIN
         pipeline.enableHolisticRecord(config)
 
-    return(pipeline, record_data)
+    return(pipeline, record_data, rgbd)
 
 def create_watch_pipeline(pipeline: dai.Pipeline,
                           sockForward: bool) -> Tuple[dai.Pipeline, dai.node]:

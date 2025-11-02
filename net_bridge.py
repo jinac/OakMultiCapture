@@ -1,6 +1,7 @@
 import math
 from datetime import timedelta, datetime
 from pathlib import Path
+import time
 
 import cv2
 import numpy as np
@@ -55,19 +56,15 @@ def run():
             p.start()
 
 
-        import time
-        while True:
-            time.sleep(1)
-        #     # msgs = rgbd_sync.tryGetSample()
-        #     # for idx, data in enumerate(msgs):
-        #         # rgb_frame = data.getRGBFrame()
-        #         # d_frame = data.getDepthFrame()
-        #         # displayFrame(rgb_frame, f"{idx}_0")
-        #         # displayFrame(d_frame, f"{idx}_1")
-        #     # print("bla")
-        #     if cv2.waitKey(100) == ord('q'):
-        #         break
-
+        try:
+            while True:
+                print([p.isRunning() for p in pipelines])
+                print("Looping... Press Ctrl+C to exit.")
+                time.sleep(1)  # Simulate some work being done
+        except KeyboardInterrupt:
+            print("Exiting...")
+            for p in pipelines:
+                p.stop()
 def main():
     check_devices()
     run()

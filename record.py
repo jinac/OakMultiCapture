@@ -1,6 +1,7 @@
 import math
-from datetime import datetime, timedelta
+from datetime import timedelta, datetime
 from pathlib import Path
+import time
 
 import cv2
 import numpy as np
@@ -8,60 +9,57 @@ import depthai as dai
 import contextlib
 
 import utils
-
+import nodes
 
 def check_devices():
     for device in dai.Device.getAllAvailableDevices():
         print(f"{device.getDeviceId()} {device.state}")
 
-def init_stream(stack, out_dir, vis):
+def init_stream(stack, remote_connector, dir_str, idx):
     pipeline = stack.enter_context(dai.Pipeline())
-    out = utils.create_record_pipeline(pipeline, str(out_dir), True, True, vis)
+    pipeline, record_data, pcl_out = utils.create_record_pipeline(pipeline, Path(dir_str, str(idx)), True, True, False)
 
-    return(out)
-
-def displayFrame(msg, i):
-    assert isinstance(msg, dai.ImgFrame)
-    frame = msg.getCvFrame()
-    seqNum = msg.getSequenceNum()
-    timestamp = msg.getTimestamp()
-    frame = cv2.putText(
-        frame,
-        str(timestamp.total_seconds()),
-        (50,50),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0, 255, 0))
-    cv2.imshow(f"video_device{i}", frame)
+    remote_connector.addTopic("pcl", pcl_out.pcl, "common")
+    # pipeline.start()
+    return(pipeline)
 
 def run():
-    out_dir = Path(datetime.now().strftime("calibration_%Y%m%d_%H%M"))
-    if not out_dir.exists():
-        out_dir.mkdir()
-    print(f"Saving to {out_dir}")
-
     with contextlib.ExitStack() as stack:
         deviceInfos = dai.Device.getAllAvailableDevices()
         print("=== Found devices: ", deviceInfos)
         pipelines = []
-        cam_data = []
+
+        remoteConnector = dai.RemoteConnection(
+            webSocketPort=8765, httpPort=8081
+        )
+
+        dir_str = datetime.now().strftime("calibration_%Y%m%d_%H%M")
+        out_dir = Path(dir_str)
+        if not out_dir.exists():
+            out_dir.mkdir()
 
         for idx in range(len(deviceInfos)):
-            vis = idx == 0
-            pipeline, record_data = init_stream(stack, out_dir / str(idx), vis)
-
-            cam_data.append(record_data)
+            pipeline = init_stream(stack, remoteConnector, dir_str, idx)
             pipelines.append(pipeline)
 
-        for p in pipelines:
-            p.start()
+        for pipeline in pipelines:
+            pipeline.start()
+            remoteConnector.registerPipeline(pipeline)
 
-        while True:
-            if cv2.waitKey(100) == ord('q'):
-                break
+        try:
+            while True:
+                for p in pipelines:
+                    print(p.isRunning())
+                print("Looping... Press Ctrl+C to exit.")
+                time.sleep(1)  # Simulate some work being done
+        except KeyboardInterrupt:
+            print("Exiting...")
+            for p in pipelines:
+                p.stop()
 
 def main():
-    print("Start record.py")
+    print("Hello from luxtest!")
+
     check_devices()
     run()
 

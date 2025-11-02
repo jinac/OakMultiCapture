@@ -1,11 +1,13 @@
 import math
 from datetime import timedelta, datetime
 from pathlib import Path
+import time
 
 import cv2
 import numpy as np
 import depthai as dai
 import contextlib
+
 import utils
 import nodes
 
@@ -18,23 +20,23 @@ def init_stream(stack, remote_connector):
     out = utils.create_watch3D_pipeline(pipeline, False)
     pipeline, output = out
 
-    remote_connector.addTopic("pcl", output, "commoon")
+    remote_connector.addTopic("pcl", output, "common")
     # pipeline.start()
     return(pipeline, output)
 
-def displayFrame(msg, i):
-    assert isinstance(msg, dai.ImgFrame)
-    frame = msg.getCvFrame()
-    seqNum = msg.getSequenceNum()
-    timestamp = msg.getTimestamp()
-    frame = cv2.putText(
-        frame,
-        str(timestamp.total_seconds()),
-        (50,50),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0, 255, 0))
-    cv2.imshow(f"video_device{i}", frame)
+# def displayFrame(msg, i):
+#     assert isinstance(msg, dai.ImgFrame)
+#     frame = msg.getCvFrame()
+#     seqNum = msg.getSequenceNum()
+#     timestamp = msg.getTimestamp()
+#     frame = cv2.putText(
+#         frame,
+#         str(timestamp.total_seconds()),
+#         (50,50),
+#         cv2.FONT_HERSHEY_SIMPLEX,
+#         1,
+#         (0, 255, 0))
+#     cv2.imshow(f"video_device{i}", frame)
 
 def run():
     with contextlib.ExitStack() as stack:
@@ -59,16 +61,16 @@ def run():
             pipeline.start()
             remoteConnector.registerPipeline(pipeline)
 
-        while True:
-            # msgs = rgbd_sync.tryGetSample()
-            # for idx, data in enumerate(msgs):
-            #     rgb_frame = data.getRGBFrame()
-            #     d_frame = data.getDepthFrame()
-            #     displayFrame(rgb_frame, f"{idx}_0")
-            #     displayFrame(d_frame, f"{idx}_1")
-
-            if cv2.waitKey(1) == ord('q'):
-                break
+        try:
+            while True:
+                for p in pipelines:
+                    print(p.isRunning())
+                print("Looping... Press Ctrl+C to exit.")
+                time.sleep(1)  # Simulate some work being done
+        except KeyboardInterrupt:
+            print("Exiting...")
+            for p in pipelines:
+                p.stop()
 
 def main():
     print("Hello from luxtest!")
