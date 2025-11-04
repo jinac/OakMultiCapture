@@ -71,7 +71,7 @@ class RecordData():
         return record_dir
 
 
-class HostRGBDQueueSync():
+class HostQueueSync():
     def __init__(self, threshold=math.ceil(500 / 30)):
         self.threshold = threshold
         self.message_buffers = []
@@ -102,6 +102,7 @@ class HostRGBDQueueSync():
     def tryGetSample(self):
         out = []
         for i, q in enumerate(self.queues):
+            print(type(q))
             new_msg = q.tryGet()
             if new_msg is not None:
                 self.message_buffers[i].append(new_msg)
@@ -203,7 +204,8 @@ def create_watch_pipeline(pipeline: dai.Pipeline,
     # return pipeline
 
 def create_watch3D_pipeline(pipeline: dai.Pipeline,
-                            tsfm: np.array) -> Tuple[dai.Pipeline, dai.node]:
+                            tsfm: np.array,
+                            rec_data: RecordData) -> Tuple[dai.Pipeline, dai.node]:
     device = pipeline.getDefaultDevice()
 
     print("=== Connected to ", device.getDeviceId())
@@ -225,11 +227,12 @@ def create_watch3D_pipeline(pipeline: dai.Pipeline,
     rgbd = pipeline.create(dai.node.RGBD).build(True, mode, size)
 
     tsfm_node = pipeline.create(nodes.Cam2WorldNode)
-    tsfm_node.setTsfm(np.eye(4))
+    # tsfm_node.setTsfm(np.eye(4))
+    tsfm_node.setTsfm(rec_data.cam_params.cam_to_world)
     # tsfm_node = nodes.Cam2WorldNode(np.eye(4))
     rgbd.pcl.link(tsfm_node.inputPCL)
 
-    output = tsfm_node.outputPCL
+    output = tsfm_node.outputPCL.createOutputQueue()
 
     return(pipeline, output)
 

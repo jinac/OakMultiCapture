@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 
 from time import sleep
+from datetime import timedelta
+import math
 
 import zmq
 import matrix_pb2
@@ -190,7 +192,72 @@ class CalibrateExtrinsicsNode(dai.node.ThreadedHostNode):
                     # rgb_frame = cv2.drawFrameAxes(
                     #     rgb_frame, cam.intrinsics, cam.distortion,
                     #     r, t, 0.05)
-            
+
+
+class PCLMergeNode(dai.node.ThreadedHostNode):
+    def __init__(self):
+        dai.node.ThreadedHostNode.__init__(self)
+        self.inputPCL_0 = self.createInput()
+        self.inputPCL_1 = self.createInput()
+
+        self.outputPCL = self.createOutput()
+
+        self.message_buffers = []
+        self.queues = [self.inputPCL_0, self.inputPCL_1]
+
+    def check_sync(self, timestamp):
+        matching_frames = []
+        for q in self.message_buffers:
+            for i, msg in enumerate(q):
+                time_diff = abs(msg.getTimestamp() - timestamp)
+                # So below 17ms @ 30 FPS => frames are in sync
+                if time_diff <= timedelta(milliseconds=self.threshold):
+                    matching_frames.append(i)
+                    break
+
+        if len(matching_frames) == len(self.queues):
+            # We have all frames synced. Remove the excess ones
+            for i, q in enumerate(self.message_buffers):
+                q = q[matching_frames[i]:]
+            return True
+        else:
+            return False
+
+    def tryGetSample(self):
+        out = []
+        for i, q in enumerate(self.queues):
+            new_msg = q.tryGet()
+            if new_msg is not None:
+                self.message_buffers[i].append(new_msg)
+                if self.check_sync(new_msg.getTimestamp()):
+                    for buffer in self.message_buffers:
+                        out.append(buffer.pop(0))
+        return out
+
+    def run(self):
+        while self.isRunning():
+            try:
+                # rgbFrame = self.inputRGB.get()
+                data = self.tryGetSample()
+            except dai.MessageQueue.QueueException:
+                return
+            if data:
+                outPointCloud = dai.PointCloudData()
+                combined_points = []
+                combined_colors = []
+
+                for msg in data:
+                    points, colors = msg.getPointsRGB()
+                    ones = np.ones((points.shape[0], 1))
+                    points = np.concatenate((points, ones), axis=1)
+                    combined_points.append(points)
+                    combined_colors.append(colors)
+
+                combined_points = np.stack(combined_points)
+                combined_colors = np.stack(combined_colors)
+
+                outPointCloud.setPointsRGB(combined_points, combined_colors)
+                self.outputPCL.send(outPointCloud)
 
 # class MultiRGBDDisplay(dai.node.HostNode):
 #     def build(self, rgbd_out1, rgbd_out2):
@@ -199,7 +266,7 @@ class CalibrateExtrinsicsNode(dai.node.ThreadedHostNode):
 #         self.sendProcessingToPipeline(True)
 
 #         return self
-    
+
 #     def process(self, rgbd1, rgbd2):
 #         print(rgbd1)
 #         print(rgbd1["inColorSync"])

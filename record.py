@@ -19,7 +19,7 @@ def init_stream(stack, remote_connector, dir_str, idx):
     pipeline = stack.enter_context(dai.Pipeline())
     pipeline, record_data, pcl_out = utils.create_record_pipeline(pipeline, Path(dir_str, str(idx)), True, True, False)
 
-    remote_connector.addTopic("pcl", pcl_out.pcl, "common")
+    remote_connector.addTopic("pcl_{}".format(idx), pcl_out.pcl, "common")
     # pipeline.start()
     return(pipeline)
 
